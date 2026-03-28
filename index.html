@@ -794,11 +794,11 @@
         const rows = periodRevenueRows(activePeriod, { costCenter:name });
         const actual = rows.reduce((sum, row) => sum + num(row.amount), 0);
         const target = sumProjectTargets(activePeriod, { costCenter:name });
+        const achievementPct = pct(actual, target);
         const variance = actual - target;
-        const variancePct = variancePercent(actual, target);
-        const tone = variancePct >= 0 ? 'b-green' : variancePct >= -10 ? 'b-amber' : 'b-red';
-        const sign = variancePct > 0 ? '+' : '';
-        return `<div class="progress-item"><div class="progress-head"><strong>${escapeHtml(name)}</strong>${badge(sign + variancePct + '%', tone)}</div>${varianceProgressBar(variancePct)}<div class="progress-label"><span>Actual ${money(actual)}</span><span>Budget ${money(target)} · Variance ${money(variance)}</span></div></div>`;
+        const tone = statusTone(achievementPct);
+        const progressStatus = achievementPct >= 100 ? 'Target achieved' : achievementPct >= 80 ? 'Near target' : 'Below target';
+        return `<div class="progress-item"><div class="progress-head"><strong>${escapeHtml(name)}</strong>${badge(achievementPct + '%', tone)}</div>${progressBar(achievementPct)}<div class="progress-label"><span>${activePeriod} actual ${money(actual)}</span><span>${activePeriod} target ${money(target)} · ${progressStatus}</span></div><div class="progress-label"><span>Variance ${money(variance)}</span><span>Progress towards target</span></div></div>`;
       }).join('');
     }
 
