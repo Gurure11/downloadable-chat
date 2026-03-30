@@ -306,7 +306,7 @@
   </div>
 
   <script>
-    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz4CMKGdXAzlrTDDYcKN1BjCRu8HsQOEs5lVeQ0B5jWK4fTN8fZcNqpTo-OXAncg5hKyQ/exec';
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwHn1kv5V8DM-v7_nDWWvKHDbXBAxRV_0cgPVJwG8gi3wjX1Y_pJK69OiV5w_af_4SRSw/exec';
     const STORAGE_KEYS = { scriptUrl:'onpoint.scriptUrl', fallbackMode:'onpoint.fallbackMode', revenueBudgetMemory:'onpoint.revenueBudgetMemory', formDraft:'onpoint.formDraft' };
     const PERIODS = ['Daily','Weekly','Monthly','Quarterly','Yearly'];
     const DIVISION_COLORS = ['#0f172a','#334155','#475569','#64748b','#94a3b8','#1e293b','#475569'];
@@ -690,21 +690,26 @@
     function getMonthTargetForProject(project, dateLike = REPORTING_MONTH_DATE){
       const d = safeDate(dateLike) || REPORTING_MONTH_DATE;
       const monthIndex = d.getMonth();
-      if (project?.monthlyTargets && Object.prototype.hasOwnProperty.call(project.monthlyTargets, monthIndex)) return num(project.monthlyTargets[monthIndex]);
+      if (project?.monthlyTargets && Object.prototype.hasOwnProperty.call(project.monthlyTargets, monthIndex)) {
+        return num(project.monthlyTargets[monthIndex]);
+      }
+      const lookup = buildRowLookup(project?.raw || {});
+      const aliases = FISCAL_MONTH_COLUMN_ALIASES[monthIndex] || [];
+      const explicit = firstNumericFromLookup(lookup, aliases);
+      if (explicit != null) return num(explicit);
       if (num(project?.monthlyTarget) > 0) return num(project.monthlyTarget);
-      const annual = num(project?.totalIncome);
-      return annual ? annual / 12 : 0;
+      return 0;
     }
     function projectMatchesFilters(project, filters = {}){
       if (filters.costCenter && filters.costCenter !== 'All' && normalizeCostCenterName(project.division) !== normalizeCostCenterName(filters.costCenter)) return false;
       if (filters.manager && filters.manager !== 'All' && !sameText(project.pm, filters.manager)) return false;
-      if (filters.project && filters.project !== 'All' && project.project !== filters.project) return false;
+      if (filters.project && filters.project !== 'All' && !sameText(project.project, filters.project)) return false;
       return true;
     }
     function projectTargetForPeriod(project, period, dateLike = REPORTING_MONTH_DATE){
       const d = safeDate(dateLike) || REPORTING_MONTH_DATE;
       const monthTarget = getMonthTargetForProject(project, d);
-      const annual = monthTarget ? monthTarget * 12 : num(project?.totalIncome);
+      const annual = monthTarget * 12;
       if (period === 'Daily') return monthTarget / Math.max(daysInMonth(d), 1);
       if (period === 'Weekly') return (monthTarget / Math.max(daysInMonth(d), 1)) * 7;
       if (period === 'Monthly') return monthTarget;
@@ -865,7 +870,7 @@
           startDate: normaliseDate(row.StartDate || row.startDate),
           endDate: normaliseDate(row.EndDate || row.endDate),
           monthlyTargets,
-          monthlyTarget: genericMonthlyTarget != null ? num(genericMonthlyTarget) : (monthlyTargets[2] || 0),
+          monthlyTarget: explicitMarch != null ? num(explicitMarch) : (genericMonthlyTarget != null ? num(genericMonthlyTarget) : 0),
           raw: row
         };
       });
@@ -1401,7 +1406,7 @@
       const baseFilters = { costCenter: state.division, manager: state.manager, project: 'All' };
       const periodSummaries = Object.fromEntries(PERIODS.map(label => {
         const rows = periodRevenueRows(label, baseFilters).filter(row => rowMatchesQuery(row, state.query));
-        const actual = rows.reduce((sum, row) => sum + num(row.amount), 0);
+        const actual = actualRevenueForPeriod(label, baseFilters);
         const projectedTarget = sumProjectTargetsForPeriodWithQuery(label, baseFilters, state.query);
         const straightLineBudget = straightLineBudgetForPeriod(label, baseFilters);
         const target = effectiveBudgetTarget(projectedTarget, straightLineBudget);
