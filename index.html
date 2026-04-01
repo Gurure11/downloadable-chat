@@ -308,7 +308,7 @@
   </div>
 
   <script>
-    const DEFAULT_SCRIPT_URL = '';
+    const DEFAULT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwyIeIHKlQmbCrg73qZAsm4QgpANa1RC0GzWBVDgmR_JYJMqilB6YgqoMJs0xjLxHH6yw/exec';
     const STORAGE_KEYS = { scriptUrl:'onpoint.scriptUrl', fallbackMode:'onpoint.fallbackMode', revenueBudgetMemory:'onpoint.revenueBudgetMemory', straightLineMemory:'onpoint.straightLineMemory', formDraft:'onpoint.formDraft' };
     const PERIODS = ['Daily','Weekly','Monthly','Quarterly','Yearly'];
     const DIVISION_COLORS = ['#0f172a','#334155','#475569','#64748b','#94a3b8','#1e293b','#475569'];
@@ -735,6 +735,7 @@
 
     function managerStraightLineMonthlyBudget(manager){
       const row = getManagerBudgetRow(manager);
+      if (row && num(row.straightLineBudget) > 0) return num(row.straightLineBudget);
       if (row && num(row.budget) > 0) return num(row.budget);
       const key = normalizedString(manager);
       return MANAGER_STRAIGHT_LINE_MONTHLY_TARGETS[key] || 0;
@@ -1063,8 +1064,9 @@
         manager: row.Manager || row.manager || '',
         costCenter: normalizeCostCenterName(row.CostCenter || row.Division || row.costCenter || ''),
         projectName: row.ProjectName || row.projectName || '',
-        amount: num(row.Amount || row.amount),
+        amount: num(row.Actuals || row.ACTUALS || row.Amount || row.amount),
         budget: num(row.Budget || row.budget),
+        straightLineBudget: num(row['Straightline Budget'] || row['STRAIGHTLINE BUDGET'] || row['Straight-line Budget'] || row['STRAIGHT-LINE BUDGET'] || row.StraightlineBudget || row.straightLineBudget),
         quality: num(row.Quality || row.quality || 80),
         safety: num(row.Safety || row.safety || 0)
       }));
@@ -1099,10 +1101,11 @@
         manager: row.ProjectManager || row['PROJECT MANAGER'] || row.Manager || row.manager || row.pm || '',
         costCenter: normalizeCostCenterName(row.CostCenter || row['COST CENTER'] || row.Division || row.division || ''),
         budget: num(row.Budget || row['BUDGET'] || row.MonthlyBudget || row['MONTHLY BUDGET']),
-        actual: num(row.Actual || row['ACTUAL'] || row.Amount || row['AMOUNT']),
+        straightLineBudget: num(row['Straightline Budget'] || row['STRAIGHTLINE BUDGET'] || row['Straight-line Budget'] || row['STRAIGHT-LINE BUDGET'] || row.StraightlineBudget || row.straightLineBudget),
+        actual: num(row.Actual || row['ACTUAL'] || row.Actuals || row['ACTUALS'] || row.Amount || row['AMOUNT']),
         variance: num(row.Variance || row['VARIANCE']),
         performancePct: num(row['% PERFOMANCE'] || row['% PERFORMANCE'] || row.Performance || row.performance || row.PerformancePct || row.performancePct)
-      })).filter(row => row.manager || row.budget || row.actual);
+      })).filter(row => row.manager || row.budget || row.straightLineBudget || row.actual);
     }
 
     function getManagerBudgetRow(manager){
@@ -1201,7 +1204,7 @@
         if (!invoicesResult.ok) warnings.push('Invoices failed.');
         if (!managerBudgetsResult.ok) warnings.push('Manager budgets failed.');
         setConnection(warnings.length ? 'Partially Connected' : 'Live Connected', warnings.length ? 'b-amber' : 'b-green');
-        setStatusSummary(`Loaded live data.<br><br>Projects: ${projectsData.length}<br>Revenue rows: ${revenueData.length}<br>Invoice rows: ${invoiceData.length}<br>Manager budgets: ${managerBudgetData.length}<br>Last sync: ${new Date().toLocaleTimeString()}`);
+        setStatusSummary(`Loaded live data.<br><br>Projects: ${projectsData.length}<br>Revenue rows: ${revenueData.length}<br>Invoice rows: ${invoiceData.length}<br>Manager budgets: ${managerBudgetData.length}<br>Apps Script URL embedded: Yes<br>Straight-line Budget source: Straightline sheet ID 1BjnvNUGxXSEUPyv2vuAa0yiwGRE5bea4Ah0kUctseqs → Straightline Budget<br>Last sync: ${new Date().toLocaleTimeString()}`);
         populateInputs(snapshot);
         render();
       } finally {
